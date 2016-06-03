@@ -78,7 +78,63 @@ void calibrateStereoCamera(Size);
 void calibrateInRealTime(Mat, Mat);
 void calibrateFromSavedImages(string, string, string, string);
 
-void testcalibrateStereoCamera();
+Mat testcalibrateStereoCamera(Mat, Mat);
+
+class stereocam {
+public:
+
+	FileStorage fsL;
+	Mat cameraMatrix[2], distCoeffs[2];
+	Mat R1, R2, P1, P2;
+	Mat rmap[2][2];
+	Size imageSize;
+
+	stereocam() {
+		cout << "Constructor called!" << endl;
+
+		cameraMatrix[0] = Mat::eye(3, 3, CV_64F);
+		cameraMatrix[1] = Mat::eye(3, 3, CV_64F);
+
+		fsL.open("camera_info/intrinsics.yml", FileStorage::READ);
+		if (fsL.isOpened()) {
+			fsL["M1"] >> cameraMatrix[0];
+			fsL["D1"] >> distCoeffs[0];
+			fsL["M2"] >> cameraMatrix[1];
+			fsL["D2"] >> distCoeffs[1];
+			fsL.release();
+		}
+		else
+			cout << "Error: Could not open intrinsics file (intrinsic.yml)." << endl;
+		//cout << "Reading extrinsics.yml - left/right.yaml "<< endl;
+		cout << "M1:" << cameraMatrix[0] << endl;
+		cout << "D1:" << distCoeffs[0] << endl;
+		cout << "M2:" << cameraMatrix[1] << endl;
+		cout << "D2:" << distCoeffs[1] << endl;
+		FileStorage fsR;
+		fsR.open("camera_info/extrinsics.yml", FileStorage::READ);
+		if (fsR.isOpened()) {
+			fsR["R1"] >> R1;
+			fsR["R2"] >> R2;
+			fsR["P1"] >> P1;
+			fsR["P2"] >> P2;
+			fsR.release();
+		}
+		else
+			cout << "Error: Could not open extrinsics file (extrinsics.yml)." << endl;
+		cout << "Cmaera parameters GOT !!" << endl;
+		cout << "R1:" << R1 << endl;
+		cout << "P1:" << P1 << endl;
+		cout << "R2:" << R2 << endl;
+		cout << "P2:" << P2 << endl;
+
+		Mat crp = imread("./images/image_left_1.png");
+		imageSize = crp.size();
+
+		initUndistortRectifyMap(cameraMatrix[0], distCoeffs[0], R1, P1, imageSize, CV_16SC2, rmap[0][0], rmap[0][1]);
+		initUndistortRectifyMap(cameraMatrix[1], distCoeffs[1], R2, P2, imageSize, CV_16SC2, rmap[1][0], rmap[1][1]);
+	}
+};
+stereocam ps4eye;
 
 Mat displayCapturedImageIndex(Mat img) {
 	std::ostringstream imageIndex;
@@ -428,7 +484,15 @@ int stereo_calib(int argc, char** argv) {
 
 int main() {
 	//calibrateFromSavedImages(dir, prefixLeft, prefixRight, postfix);
-	testcalibrateStereoCamera();
+	cout << "testing object" << endl;
+	cout << ps4eye.R1 << endl;
+	cout << "test END" << endl;
+
+	Mat imgL = imread("./images/image_left_1.png");
+	Mat imgR = imread("./images/image_right_1.png");
+
+	Mat tstmat  = testcalibrateStereoCamera(imgL, imgR);
+
 	cout << "## Calibration FINISHED" << endl;
 	//cout << "## Calibrating F(x)" << endl;
 	/*
@@ -441,12 +505,14 @@ int main() {
 	return 0;
 }
 
-void testcalibrateStereoCamera() {
-
+Mat testcalibrateStereoCamera(Mat imgL, Mat imgR) {
+	/*
 	Mat imgL = imread("./images/image_left_1.png");
 	Mat imgR = imread("./images/image_right_1.png");
+	*/
 	Size imageSizeL = imgL.size();
 	Size imageSizeR = imgR.size();
+	
 	/*
 	namedWindow("imgL1");
 	namedWindow("imgR1");
@@ -501,12 +567,13 @@ void testcalibrateStereoCamera() {
 	remap(imgL, imgL, rmap[0][0], rmap[0][1], INTER_LINEAR);
 	remap(imgR, imgR, rmap[1][0], rmap[1][1], INTER_LINEAR);
 	
-	namedWindow("imgL", WINDOW_AUTOSIZE);
 	namedWindow("imgR", WINDOW_AUTOSIZE);
 	imshow("imgL", imgL);
 	//waitKey(30);
 	imshow("imgR", imgR);
 
 	cout << "rectified!" << endl;
-	waitKey(0);
+	waitKey(33);
+
+	return imgR;
 }
